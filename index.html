@@ -781,7 +781,7 @@ function updateTray(){
         <div class="name">${i.name} ×${i.qty}</div>
         <div class="sub">${i.brand} · $${(i.price*i.qty).toFixed(2)}</div>
       </div>
-      <button class="remove" onclick="removeItem(${i.id})">Quitar</button>
+      <button class="remove" onclick="removeItem('${i.id}')">Quitar</button>
     </div>
   `).join('');
 }
