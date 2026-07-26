@@ -8,15 +8,15 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;1,9..144,500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root{
-    --ink:#2a2620;
-    --bg:#faf6f3;
+    --ink:#241a20;
+    --bg:#fbe4f2;
     --paper:#ffffff;
-    --rose:#dd9aa4;
-    --rose-deep:#c97686;
-    --mint:#a7c4b3;
-    --mint-deep:#84a893;
-    --line:#e7ded7;
-    --muted:#8c8178;
+    --rose:#f2a9d8;
+    --rose-deep:#d6469c;
+    --mint:#f6c8e6;
+    --mint-deep:#c94f8f;
+    --line:#f3d2e6;
+    --muted:#8c7482;
   }
   *{box-sizing:border-box;}
   body{
@@ -32,8 +32,8 @@
     text-align:center;
     border-bottom:1px solid var(--line);
     background:
-      radial-gradient(circle at 15% 20%, rgba(221,154,164,.14), transparent 45%),
-      radial-gradient(circle at 85% 10%, rgba(167,196,179,.16), transparent 45%);
+      radial-gradient(circle at 15% 20%, rgba(214,70,156,.12), transparent 45%),
+      radial-gradient(circle at 85% 10%, rgba(242,169,216,.22), transparent 45%);
   }
   .eyebrow{
     font-size:11px;
@@ -58,13 +58,54 @@
     line-height:1.5;
   }
 
+  .toolbar{
+    max-width:920px;
+    margin:28px auto 0;
+    padding:0 20px;
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+  }
+  .toolbar input[type="text"]{
+    flex:1 1 220px;
+    border:1px solid var(--line);
+    background:var(--paper);
+    border-radius:12px;
+    padding:11px 14px;
+    font-size:14px;
+    font-family:'Manrope',sans-serif;
+    color:var(--ink);
+  }
+  .toolbar select{
+    flex:1 1 130px;
+    border:1px solid var(--line);
+    background:var(--paper);
+    border-radius:12px;
+    padding:11px 12px;
+    font-size:13.5px;
+    font-family:'Manrope',sans-serif;
+    color:var(--ink);
+  }
+  .toolbar input:focus, .toolbar select:focus{
+    outline:none;
+    border-color:var(--rose-deep);
+  }
+
   .catalog{
     max-width:920px;
-    margin:36px auto;
+    margin:16px auto 36px;
     padding:0 20px;
     display:grid;
     grid-template-columns:repeat(auto-fill,minmax(210px,1fr));
     gap:16px;
+  }
+  @media (max-width:560px){
+    .catalog{
+      grid-template-columns:repeat(2,1fr);
+      gap:10px;
+    }
+    .card{padding:10px;gap:6px;}
+    .swatch{height:110px;}
   }
   .card{
     background:var(--paper);
@@ -121,6 +162,22 @@
     text-transform:uppercase;
     color:var(--muted);
     font-weight:700;
+  }
+  .card-top-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:6px;
+  }
+  .badge{
+    font-size:10px;
+    font-weight:700;
+    letter-spacing:.03em;
+    background:var(--mint);
+    color:var(--mint-deep);
+    padding:3px 9px;
+    border-radius:999px;
+    white-space:nowrap;
   }
   .card .name{
     font-family:'Fraunces',serif;
@@ -419,6 +476,54 @@
     color:var(--muted);
     margin:10px 0 16px;
   }
+
+  .name-modal{
+    background:var(--paper);
+    border-radius:20px;
+    max-width:340px;
+    width:100%;
+    padding:26px;
+    position:relative;
+  }
+  .name-modal h3{
+    font-family:'Fraunces',serif;
+    font-size:19px;
+    margin:0 0 6px;
+  }
+  .name-modal p{
+    font-size:13.5px;
+    color:var(--muted);
+    margin:0 0 16px;
+    line-height:1.5;
+  }
+  .name-modal input{
+    width:100%;
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:12px 14px;
+    font-size:14.5px;
+    font-family:'Manrope',sans-serif;
+    margin-bottom:14px;
+  }
+  .name-modal input:focus{outline:none;border-color:var(--rose-deep);}
+  .name-modal-actions{display:flex;gap:10px;}
+  .name-modal-actions button{
+    flex:1;
+    border:none;
+    padding:12px;
+    border-radius:12px;
+    font-weight:800;
+    font-size:14px;
+    cursor:pointer;
+  }
+  .name-cancel{background:var(--bg);color:var(--ink);}
+  .name-confirm{background:var(--rose);color:var(--ink);}
+  .name-error{
+    color:var(--rose-deep);
+    font-size:12.5px;
+    margin:-8px 0 12px;
+    display:none;
+  }
 </style>
 </head>
 <body>
@@ -428,6 +533,22 @@
   <h1>Ks-metics</h1>
   <p>Elegí tus productos y cantidades. Al final tocás un botón y el pedido queda listo para enviar por WhatsApp.</p>
 </header>
+
+<div class="toolbar">
+  <input type="text" id="searchInput" placeholder="🔍 Buscar producto o marca...">
+  <select id="categoryFilter">
+    <option value="">Todas las categorías</option>
+  </select>
+  <select id="brandFilter">
+    <option value="">Todas las marcas</option>
+  </select>
+  <select id="sortFilter">
+    <option value="">Ordenar por...</option>
+    <option value="price-asc">Precio: menor a mayor</option>
+    <option value="price-desc">Precio: mayor a menor</option>
+    <option value="name-asc">Nombre: A-Z</option>
+  </select>
+</div>
 
 <div class="catalog" id="catalog"></div>
 
@@ -472,6 +593,19 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="nameModalOverlay">
+  <div class="name-modal">
+    <h3>Antes de enviar 👋</h3>
+    <p>Escribe tu nombre para que quede junto a tu pedido.</p>
+    <input type="text" id="customerName" placeholder="Tu nombre">
+    <div class="name-error" id="nameError">Por favor escribe tu nombre.</div>
+    <div class="name-modal-actions">
+      <button class="name-cancel" id="nameCancel">Cancelar</button>
+      <button class="name-confirm" id="nameConfirm">Enviar pedido</button>
+    </div>
+  </div>
+</div>
+
 <div class="zoom-overlay" id="zoomOverlay">
   <button class="zoom-close" id="zoomClose">✕</button>
   <img id="zoomImg" src="" alt="">
@@ -496,10 +630,18 @@ const CATEGORY_META = {
 function metaFor(cat){
   return CATEGORY_META[cat] || { emoji: "🧪", cls: "cat-otros" };
 }
+function titleCase(str){
+  return str.replace(/\b\w/g, c => c.toUpperCase());
+}
 
 let PRODUCTS = [];
+let ALL_PRODUCTS = [];
 const state = {}; // id -> qty
 const catalogEl = document.getElementById('catalog');
+const searchInput = document.getElementById('searchInput');
+const categoryFilter = document.getElementById('categoryFilter');
+const brandFilter = document.getElementById('brandFilter');
+const sortFilter = document.getElementById('sortFilter');
 
 async function loadProducts(){
   catalogEl.innerHTML = `<div class="state-msg">Cargando productos desde Notion…</div>`;
@@ -507,22 +649,67 @@ async function loadProducts(){
     const res = await fetch('/api/products');
     if(!res.ok) throw new Error('bad response');
     const data = await res.json();
-    PRODUCTS = data.map(p => ({...p, ...metaFor(p.cat)}));
+    ALL_PRODUCTS = data.map(p => ({...p, ...metaFor(p.cat), catLabel: titleCase(p.cat)}));
+    PRODUCTS = ALL_PRODUCTS;
     if(PRODUCTS.length === 0){
       catalogEl.innerHTML = `<div class="state-msg">No hay productos disponibles por ahora.</div>`;
       return;
     }
-    render();
+    populateFilters();
+    render(PRODUCTS);
   }catch(err){
     catalogEl.innerHTML = `<div class="state-msg">No se pudieron cargar los productos. Intenta recargar la página.</div>`;
   }
 }
 
-function render(){
-  catalogEl.innerHTML = PRODUCTS.map(p => `
+function populateFilters(){
+  const cats = [...new Set(ALL_PRODUCTS.map(p => p.cat))].sort();
+  const brands = [...new Set(ALL_PRODUCTS.map(p => p.brand).filter(Boolean))].sort();
+  categoryFilter.innerHTML = `<option value="">Todas las categorías</option>` +
+    cats.map(c => `<option value="${c}">${titleCase(c)}</option>`).join('');
+  brandFilter.innerHTML = `<option value="">Todas las marcas</option>` +
+    brands.map(b => `<option value="${b}">${b}</option>`).join('');
+}
+
+function applyFilters(){
+  const q = searchInput.value.trim().toLowerCase();
+  const cat = categoryFilter.value;
+  const brand = brandFilter.value;
+  const sort = sortFilter.value;
+
+  let list = ALL_PRODUCTS.filter(p => {
+    const matchesQuery = !q || p.name.toLowerCase().includes(q) || p.brand.toLowerCase().includes(q);
+    const matchesCat = !cat || p.cat === cat;
+    const matchesBrand = !brand || p.brand === brand;
+    return matchesQuery && matchesCat && matchesBrand;
+  });
+
+  if(sort === 'price-asc') list = list.slice().sort((a,b) => a.price - b.price);
+  else if(sort === 'price-desc') list = list.slice().sort((a,b) => b.price - a.price);
+  else if(sort === 'name-asc') list = list.slice().sort((a,b) => a.name.localeCompare(b.name));
+
+  PRODUCTS = list;
+  render(PRODUCTS);
+}
+
+searchInput.addEventListener('input', applyFilters);
+categoryFilter.addEventListener('change', applyFilters);
+brandFilter.addEventListener('change', applyFilters);
+sortFilter.addEventListener('change', applyFilters);
+
+function render(list){
+  const items = list || PRODUCTS;
+  if(items.length === 0){
+    catalogEl.innerHTML = `<div class="state-msg">No se encontraron productos con esos filtros.</div>`;
+    return;
+  }
+  catalogEl.innerHTML = items.map(p => `
     <div class="card">
       <div class="swatch ${p.cls}${p.image ? ' has-image' : ''}" onclick="openModal('${p.id}')">${p.image ? `<img src="${p.image}" alt="${p.name}">` : p.emoji}</div>
-      <div class="brand">${p.brand}</div>
+      <div class="card-top-row">
+        <div class="brand">${p.brand}</div>
+        <div class="badge">${p.catLabel}</div>
+      </div>
       <div class="name" onclick="openModal('${p.id}')">${p.name}</div>
       <div class="price">$${p.price.toFixed(2)}</div>
       <div class="qty-row">
@@ -555,7 +742,7 @@ function addToOrder(id){
 }
 
 function getOrderItems(){
-  return PRODUCTS.filter(p => (state[p.id]||0) > 0).map(p => ({...p, qty: state[p.id]}));
+  return ALL_PRODUCTS.filter(p => (state[p.id]||0) > 0).map(p => ({...p, qty: state[p.id]}));
 }
 
 function updateTray(){
@@ -587,10 +774,15 @@ function removeItem(id){
   updateTray();
 }
 
-function buildOrderText(){
+function buildOrderText(customerName){
   const items = getOrderItems();
   const total = items.reduce((s,i)=>s+i.qty*i.price,0);
-  let text = "🛍️ *Pedido*\n\n";
+  const now = new Date();
+  const fecha = now.toLocaleDateString('es-VE', { day:'2-digit', month:'2-digit', year:'numeric' });
+  const hora = now.toLocaleTimeString('es-VE', { hour:'2-digit', minute:'2-digit' });
+  let text = "🛍️ *Pedido — Ks-metics*\n\n";
+  if(customerName) text += `*Cliente:* ${customerName}\n`;
+  text += `*Fecha:* ${fecha} · ${hora}\n\n`;
   items.forEach(i => {
     text += `• ${i.name} (${i.brand}) x${i.qty} — $${(i.price*i.qty).toFixed(2)}\n`;
   });
@@ -604,7 +796,7 @@ const modalOverlay = document.getElementById('modalOverlay');
 
 function openModal(id){
   modalProductId = id;
-  const p = PRODUCTS.find(x => x.id === id);
+  const p = ALL_PRODUCTS.find(x => x.id === id);
   document.getElementById('modalSwatch').className = `modal-swatch ${p.cls}${p.image ? ' has-image' : ''}`;
   document.getElementById('modalSwatch').innerHTML = p.image ? `<img src="${p.image}" alt="${p.name}">` : p.emoji;
   document.getElementById('modalSwatch').onclick = p.image ? () => openZoom(p.image, p.name) : null;
@@ -657,14 +849,42 @@ document.getElementById('copyBtn').onclick = async () => {
   setTimeout(() => { btn.textContent = "Copiar pedido"; btn.classList.remove('copied'); }, 1400);
 };
 
-// Enviar por WhatsApp
+// Enviar por WhatsApp — primero pide el nombre
+const nameModalOverlay = document.getElementById('nameModalOverlay');
+const customerNameInput = document.getElementById('customerName');
+const nameError = document.getElementById('nameError');
+
 document.getElementById('waBtn').onclick = () => {
   const items = getOrderItems();
   if(items.length === 0) return;
-  const text = buildOrderText();
+  customerNameInput.value = '';
+  nameError.style.display = 'none';
+  nameModalOverlay.classList.add('open');
+  setTimeout(() => customerNameInput.focus(), 100);
+};
+
+document.getElementById('nameCancel').onclick = () => {
+  nameModalOverlay.classList.remove('open');
+};
+nameModalOverlay.addEventListener('click', (e) => {
+  if(e.target === nameModalOverlay) nameModalOverlay.classList.remove('open');
+});
+
+document.getElementById('nameConfirm').onclick = () => {
+  const name = customerNameInput.value.trim();
+  if(!name){
+    nameError.style.display = 'block';
+    customerNameInput.focus();
+    return;
+  }
+  const text = buildOrderText(name);
   const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`;
+  nameModalOverlay.classList.remove('open');
   window.open(url, '_blank');
 };
+customerNameInput.addEventListener('keydown', (e) => {
+  if(e.key === 'Enter') document.getElementById('nameConfirm').click();
+});
 
 // ---- Visor de zoom (estilo Mercado Libre) ----
 const zoomOverlay = document.getElementById('zoomOverlay');
