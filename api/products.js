@@ -35,6 +35,12 @@ export default async function handler(req, res) {
     const products = data.results
       .map((page) => {
         const p = page.properties;
+        const fotoArr = p["Foto"]?.files || [];
+        const foto = fotoArr[0];
+        const imageUrl = foto
+          ? (foto.type === "external" ? foto.external?.url : foto.file?.url) || null
+          : null;
+
         return {
           id: page.id,
           name: p["Producto"]?.title?.[0]?.plain_text || "Sin nombre",
@@ -44,12 +50,13 @@ export default async function handler(req, res) {
           desc: p["Descripción"]?.rich_text?.[0]?.plain_text || "",
           available: p["Disponible"]?.checkbox ?? false,
           featured: p["Destacado"]?.checkbox ?? false,
+          image: imageUrl,
         };
       })
       .filter((p) => p.available);
 
-    // Cachea la respuesta 5 minutos para no golpear la API de Notion en cada visita
-    res.setHeader("Cache-Control", "s-maxage=300, stale-while-revalidate");
+    // Cachea poco tiempo: las fotos subidas directo a Notion vencen su link ~1 hora
+    res.setHeader("Cache-Control", "s-maxage=120, stale-while-revalidate");
     return res.status(200).json(products);
   } catch (err) {
     return res.status(500).json({ error: "No se pudo conectar con Notion", detail: String(err) });
