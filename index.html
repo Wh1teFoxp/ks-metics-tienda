@@ -88,13 +88,15 @@
     justify-content:center;
     font-size:30px;
     overflow:hidden;
+    background:#ffffff;
   }
   .swatch img{
     width:100%;
     height:100%;
-    object-fit:cover;
+    object-fit:contain;
     display:block;
   }
+  .swatch.has-image{background:#ffffff !important;}
   .cat-limpiador{background:linear-gradient(135deg,#f3e0e2,#e8c7cc);}
   .cat-tonico{background:linear-gradient(135deg,#e2ede6,#c9dccf);}
   .cat-serum{background:linear-gradient(135deg,#efe6d8,#e2d3b8);}
@@ -352,8 +354,58 @@
   .modal-swatch img{
     width:100%;
     height:100%;
-    object-fit:cover;
+    object-fit:contain;
     display:block;
+  }
+  .modal-swatch.has-image{background:#ffffff !important;}
+  .modal-swatch.has-image{cursor:zoom-in;}
+
+  .zoom-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(20,18,15,.92);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:80;
+    touch-action:none;
+    overflow:hidden;
+  }
+  .zoom-overlay.open{display:flex;}
+  .zoom-overlay img{
+    max-width:92vw;
+    max-height:88vh;
+    object-fit:contain;
+    user-select:none;
+    -webkit-user-drag:none;
+    transition:transform .08s ease-out;
+    will-change:transform;
+    background:#fff;
+    border-radius:6px;
+  }
+  .zoom-close{
+    position:absolute;
+    top:18px;right:18px;
+    width:38px;height:38px;
+    border-radius:50%;
+    border:none;
+    background:rgba(255,255,255,.92);
+    color:var(--ink);
+    font-size:18px;
+    cursor:pointer;
+    z-index:2;
+  }
+  .zoom-hint{
+    position:absolute;
+    bottom:18px;left:50%;
+    transform:translateX(-50%);
+    color:#fff;
+    font-size:12.5px;
+    opacity:.75;
+    background:rgba(0,0,0,.3);
+    padding:6px 14px;
+    border-radius:999px;
+    pointer-events:none;
   }
   .modal-name{
     font-family:'Fraunces',serif;
@@ -420,6 +472,12 @@
   </div>
 </div>
 
+<div class="zoom-overlay" id="zoomOverlay">
+  <button class="zoom-close" id="zoomClose">✕</button>
+  <img id="zoomImg" src="" alt="">
+  <div class="zoom-hint">Doble toque o rueda del mouse para hacer zoom · arrastra para mover</div>
+</div>
+
 <script>
 // ------ Productos: se cargan en vivo desde Notion vía /api/products ------
 const WHATSAPP_NUMBER = "584129058435";
@@ -463,7 +521,7 @@ async function loadProducts(){
 function render(){
   catalogEl.innerHTML = PRODUCTS.map(p => `
     <div class="card">
-      <div class="swatch ${p.cls}" onclick="openModal('${p.id}')">${p.image ? `<img src="${p.image}" alt="${p.name}">` : p.emoji}</div>
+      <div class="swatch ${p.cls}${p.image ? ' has-image' : ''}" onclick="openModal('${p.id}')">${p.image ? `<img src="${p.image}" alt="${p.name}">` : p.emoji}</div>
       <div class="brand">${p.brand}</div>
       <div class="name" onclick="openModal('${p.id}')">${p.name}</div>
       <div class="price">$${p.price.toFixed(2)}</div>
@@ -547,8 +605,9 @@ const modalOverlay = document.getElementById('modalOverlay');
 function openModal(id){
   modalProductId = id;
   const p = PRODUCTS.find(x => x.id === id);
-  document.getElementById('modalSwatch').className = `modal-swatch ${p.cls}`;
+  document.getElementById('modalSwatch').className = `modal-swatch ${p.cls}${p.image ? ' has-image' : ''}`;
   document.getElementById('modalSwatch').innerHTML = p.image ? `<img src="${p.image}" alt="${p.name}">` : p.emoji;
+  document.getElementById('modalSwatch').onclick = p.image ? () => openZoom(p.image, p.name) : null;
   document.getElementById('modalBrand').textContent = p.brand;
   document.getElementById('modalName').textContent = p.name;
   document.getElementById('modalPrice').textContent = `$${p.price.toFixed(2)}`;
@@ -606,6 +665,97 @@ document.getElementById('waBtn').onclick = () => {
   const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`;
   window.open(url, '_blank');
 };
+
+// ---- Visor de zoom (estilo Mercado Libre) ----
+const zoomOverlay = document.getElementById('zoomOverlay');
+const zoomImg = document.getElementById('zoomImg');
+let zScale = 1, zX = 0, zY = 0;
+let dragging = false, dragStartX = 0, dragStartY = 0, startX = 0, startY = 0;
+let pinchStartDist = 0, pinchStartScale = 1;
+
+function applyZoomTransform(){
+  zoomImg.style.transform = `translate(${zX}px, ${zY}px) scale(${zScale})`;
+  zoomImg.style.cursor = zScale > 1 ? 'grab' : 'zoom-in';
+}
+
+function openZoom(src, alt){
+  zoomImg.src = src;
+  zoomImg.alt = alt || '';
+  zScale = 1; zX = 0; zY = 0;
+  applyZoomTransform();
+  zoomOverlay.classList.add('open');
+}
+function closeZoom(){
+  zoomOverlay.classList.remove('open');
+}
+document.getElementById('zoomClose').onclick = closeZoom;
+zoomOverlay.addEventListener('click', (e) => { if(e.target === zoomOverlay) closeZoom(); });
+
+// Doble click / doble toque para alternar zoom
+zoomImg.addEventListener('dblclick', (e) => {
+  if(zScale === 1){ zScale = 2.5; }
+  else { zScale = 1; zX = 0; zY = 0; }
+  applyZoomTransform();
+});
+
+// Rueda del mouse (desktop)
+zoomImg.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const delta = e.deltaY < 0 ? 0.25 : -0.25;
+  zScale = Math.min(4, Math.max(1, zScale + delta));
+  if(zScale === 1){ zX = 0; zY = 0; }
+  applyZoomTransform();
+}, { passive:false });
+
+// Arrastrar para mover cuando hay zoom (mouse)
+zoomImg.addEventListener('mousedown', (e) => {
+  if(zScale === 1) return;
+  dragging = true;
+  dragStartX = e.clientX; dragStartY = e.clientY;
+  startX = zX; startY = zY;
+});
+window.addEventListener('mousemove', (e) => {
+  if(!dragging) return;
+  zX = startX + (e.clientX - dragStartX);
+  zY = startY + (e.clientY - dragStartY);
+  applyZoomTransform();
+});
+window.addEventListener('mouseup', () => { dragging = false; });
+
+// Táctil: pellizcar para zoom + arrastrar
+zoomImg.addEventListener('touchstart', (e) => {
+  if(e.touches.length === 2){
+    pinchStartDist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+    pinchStartScale = zScale;
+  } else if(e.touches.length === 1 && zScale > 1){
+    dragging = true;
+    dragStartX = e.touches[0].clientX; dragStartY = e.touches[0].clientY;
+    startX = zX; startY = zY;
+  }
+}, { passive:true });
+
+zoomImg.addEventListener('touchmove', (e) => {
+  if(e.touches.length === 2){
+    const dist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+    zScale = Math.min(4, Math.max(1, pinchStartScale * (dist / pinchStartDist)));
+    applyZoomTransform();
+  } else if(dragging && e.touches.length === 1){
+    zX = startX + (e.touches[0].clientX - dragStartX);
+    zY = startY + (e.touches[0].clientY - dragStartY);
+    applyZoomTransform();
+  }
+}, { passive:true });
+
+zoomImg.addEventListener('touchend', (e) => {
+  if(e.touches.length === 0){ dragging = false; }
+  if(zScale <= 1){ zScale = 1; zX = 0; zY = 0; applyZoomTransform(); }
+});
 
 loadProducts();
 updateTray();
