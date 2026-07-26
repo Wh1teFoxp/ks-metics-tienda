@@ -1,0 +1,57 @@
+// Esta función corre en el servidor de Vercel, nunca en el navegador del cliente.
+// Por eso el token de Notion (guardado como variable de entorno) queda seguro.
+
+export default async function handler(req, res) {
+  const token = process.env.NOTION_TOKEN;
+  const databaseId = process.env.NOTION_DATABASE_ID;
+
+  if (!token || !databaseId) {
+    return res.status(500).json({
+      error: "Faltan las variables de entorno NOTION_TOKEN o NOTION_DATABASE_ID en Vercel.",
+    });
+  }
+
+  try {
+    const notionRes = await fetch(
+      `https://api.notion.com/v1/databases/${databaseId}/query`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Notion-Version": "2022-06-28",
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({}),
+      }
+    );
+
+    if (!notionRes.ok) {
+      const errText = await notionRes.text();
+      return res.status(502).json({ error: "Notion respondió con error", detail: errText });
+    }
+
+    const data = await notionRes.json();
+
+    const products = data.results
+      .map((page) => {
+        const p = page.properties;
+        return {
+          id: page.id,
+          name: p["Producto"]?.title?.[0]?.plain_text || "Sin nombre",
+          brand: p["Marca"]?.rich_text?.[0]?.plain_text || "",
+          price: p["Precio"]?.number ?? 0,
+          cat: (p["Categoría"]?.select?.name || "otros").toLowerCase(),
+          desc: p["Descripción"]?.rich_text?.[0]?.plain_text || "",
+          available: p["Disponible"]?.checkbox ?? false,
+          featured: p["Destacado"]?.checkbox ?? false,
+        };
+      })
+      .filter((p) => p.available);
+
+    // Cachea la respuesta 5 minutos para no golpear la API de Notion en cada visita
+    res.setHeader("Cache-Control", "s-maxage=300, stale-while-revalidate");
+    return res.status(200).json(products);
+  } catch (err) {
+    return res.status(500).json({ error: "No se pudo conectar con Notion", detail: String(err) });
+  }
+}
