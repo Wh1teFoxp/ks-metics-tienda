@@ -192,6 +192,12 @@
     -webkit-box-orient:vertical;
     overflow:hidden;
   }
+  .presentation{
+    font-weight:400;
+    font-size:12.5px;
+    color:var(--muted);
+    font-family:'Manrope',sans-serif;
+  }
   .card .price{
     font-size:13.5px;
     font-weight:700;
@@ -718,7 +724,7 @@ function render(list){
           <div class="brand">${p.brand}</div>
           <div class="badge">${p.catLabel}</div>
         </div>
-        <div class="name" onclick="openModal('${p.id}')">${p.name}</div>
+        <div class="name" onclick="openModal('${p.id}')">${p.name}${p.presentation ? ` <span class="presentation">· ${p.presentation}</span>` : ''}</div>
         <div class="price">$${p.price.toFixed(2)}</div>
         <div class="qty-row">
           <div class="stepper">
@@ -793,7 +799,7 @@ function buildOrderText(customerName){
   if(customerName) text += `*Cliente:* ${customerName}\n`;
   text += `*Fecha:* ${fecha} · ${hora}\n\n`;
   items.forEach(i => {
-    text += `• ${i.name} (${i.brand}) x${i.qty} — $${(i.price*i.qty).toFixed(2)}\n`;
+    text += `• ${i.name}${i.presentation ? ` (${i.presentation})` : ''} — ${i.brand} x${i.qty} — $${(i.price*i.qty).toFixed(2)}\n`;
   });
   text += `\n*Total: $${total.toFixed(2)}*`;
   return text;
@@ -810,7 +816,7 @@ function openModal(id){
   document.getElementById('modalSwatch').innerHTML = p.image ? `<img src="${p.image}" alt="${p.name}">` : p.emoji;
   document.getElementById('modalSwatch').onclick = p.image ? () => openZoom(p.image, p.name) : null;
   document.getElementById('modalBrand').textContent = p.brand;
-  document.getElementById('modalName').textContent = p.name;
+  document.getElementById('modalName').textContent = p.presentation ? `${p.name} · ${p.presentation}` : p.name;
   document.getElementById('modalPrice').textContent = `$${p.price.toFixed(2)}`;
   document.getElementById('modalDesc').textContent = p.desc;
   document.getElementById('modalQty').textContent = state[id] || 0;

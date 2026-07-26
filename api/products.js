@@ -41,13 +41,16 @@ export default async function handler(req, res) {
           ? (foto.type === "external" ? foto.external?.url : foto.file?.url) || null
           : null;
 
+        const joinRichText = (prop) => (prop?.rich_text || []).map((t) => t.plain_text).join("");
+
         return {
           id: page.id,
           name: p["Producto"]?.title?.[0]?.plain_text || "Sin nombre",
-          brand: p["Marca"]?.rich_text?.[0]?.plain_text || "",
+          brand: joinRichText(p["Marca"]),
+          presentation: joinRichText(p["Presentación"]),
           price: p["Precio"]?.number ?? 0,
           cat: (p["Categoría"]?.select?.name || "otros").toLowerCase(),
-          desc: p["Descripción"]?.rich_text?.[0]?.plain_text || "",
+          desc: joinRichText(p["Descripción"]),
           available: p["Disponible"]?.checkbox ?? false,
           featured: p["Destacado"]?.checkbox ?? false,
           image: imageUrl,
