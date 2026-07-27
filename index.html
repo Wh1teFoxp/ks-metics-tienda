@@ -182,6 +182,29 @@
     border-radius:999px;
     white-space:nowrap;
   }
+  .card{position:relative;}
+  .tags-row{
+    display:flex;
+    gap:5px;
+    flex-wrap:wrap;
+    margin-bottom:2px;
+  }
+  .tag-sale, .tag-last{
+    font-size:10px;
+    font-weight:800;
+    letter-spacing:.02em;
+    padding:3px 8px;
+    border-radius:6px;
+    white-space:nowrap;
+  }
+  .tag-sale{
+    background:linear-gradient(135deg,#ff5f8f,#e0327a);
+    color:#fff;
+  }
+  .tag-last{
+    background:linear-gradient(135deg,#ffb020,#ff8a00);
+    color:#fff;
+  }
   .card .name{
     font-family:'Fraunces',serif;
     font-size:14.5px;
@@ -540,6 +563,29 @@
     margin:-8px 0 12px;
     display:none;
   }
+  .confirm-summary{
+    background:var(--bg);
+    border-radius:12px;
+    padding:12px 14px;
+    margin-bottom:16px;
+    max-height:180px;
+    overflow-y:auto;
+  }
+  .confirm-summary .c-item{
+    display:flex;
+    justify-content:space-between;
+    font-size:13px;
+    padding:5px 0;
+    border-bottom:1px dashed var(--line);
+  }
+  .confirm-summary .c-item:last-child{border-bottom:none;}
+  .confirm-summary .c-total{
+    display:flex;
+    justify-content:space-between;
+    font-weight:800;
+    font-size:14.5px;
+    padding-top:8px;
+  }
 </style>
 </head>
 <body>
@@ -611,13 +657,24 @@
 
 <div class="modal-overlay" id="nameModalOverlay">
   <div class="name-modal">
-    <h3>Antes de enviar 👋</h3>
-    <p>Escribe tu nombre para que quede junto a tu pedido.</p>
-    <input type="text" id="customerName" placeholder="Tu nombre">
-    <div class="name-error" id="nameError">Por favor escribe tu nombre.</div>
-    <div class="name-modal-actions">
-      <button class="name-cancel" id="nameCancel">Cancelar</button>
-      <button class="name-confirm" id="nameConfirm">Enviar pedido</button>
+    <div id="nameStep">
+      <h3>Antes de enviar 👋</h3>
+      <p>Escribe tu nombre para que quede junto a tu pedido.</p>
+      <input type="text" id="customerName" placeholder="Tu nombre">
+      <div class="name-error" id="nameError">Por favor escribe tu nombre.</div>
+      <div class="name-modal-actions">
+        <button class="name-cancel" id="nameCancel">Cancelar</button>
+        <button class="name-confirm" id="nameNext">Continuar</button>
+      </div>
+    </div>
+    <div id="confirmStep" style="display:none;">
+      <h3>Estás a un paso 🌸</h3>
+      <p>¿Seguro que no se te olvida nada? Revisa tu pedido antes de enviarlo:</p>
+      <div class="confirm-summary" id="confirmSummary"></div>
+      <div class="name-modal-actions">
+        <button class="name-cancel" id="confirmBack">Volver</button>
+        <button class="name-confirm" id="nameConfirm">Sí, enviar pedido</button>
+      </div>
     </div>
   </div>
 </div>
@@ -652,6 +709,7 @@ function titleCase(str){
 
 let PRODUCTS = [];
 let ALL_PRODUCTS = [];
+let orderSaved = false;
 const state = {}; // id -> qty
 const catalogEl = document.getElementById('catalog');
 const searchInput = document.getElementById('searchInput');
@@ -727,6 +785,7 @@ function render(list){
           <div class="brand">${p.brand}</div>
           <div class="badge">${p.catLabel}</div>
         </div>
+        ${(p.onSale || p.lastUnits) ? `<div class="tags-row">${p.onSale ? '<span class="tag-sale">🔥 Oferta</span>' : ''}${p.lastUnits ? '<span class="tag-last">⚡ Últimas unidades</span>' : ''}</div>` : ''}
         <div class="name" onclick="openModal('${p.id}')">${p.name}${p.presentation ? ` <span class="presentation">· ${p.presentation}</span>` : ''}</div>
         <div class="price">$${p.price.toFixed(2)}</div>
         <div class="qty-row">
@@ -747,6 +806,7 @@ function changeQty(id, delta){
   const next = Math.max(0, current + delta);
   state[id] = next;
   document.getElementById(`qty-${id}`).textContent = next;
+  orderSaved = false;
 }
 
 function addToOrder(id){
@@ -756,6 +816,7 @@ function addToOrder(id){
   btn.textContent = "Agregado ✓";
   btn.classList.add('added');
   setTimeout(() => { btn.textContent = "Agregar"; btn.classList.remove('added'); }, 900);
+  orderSaved = false;
   updateTray();
 }
 
@@ -789,6 +850,7 @@ function updateTray(){
 function removeItem(id){
   state[id] = 0;
   document.getElementById(`qty-${id}`).textContent = 0;
+  orderSaved = false;
   updateTray();
 }
 
@@ -846,6 +908,24 @@ const tray = document.getElementById('tray');
 document.getElementById('trayToggle').onclick = () => { tray.classList.add('open'); };
 document.getElementById('trayClose').onclick = () => { tray.classList.remove('open'); };
 
+async function saveOrderToNotion(customerName, channel){
+  if(orderSaved) return;
+  const items = getOrderItems();
+  if(items.length === 0) return;
+  const total = items.reduce((s,i)=>s+i.qty*i.price,0);
+  orderSaved = true; // se marca antes de esperar la respuesta, para que no se dispare dos veces por doble click
+  try{
+    await fetch('/api/save-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ customerName: customerName || null, items, total, channel })
+    });
+  }catch(e){
+    // Si falla el guardado, no interrumpe la experiencia del cliente
+    console.error('No se pudo registrar el pedido en Notion', e);
+  }
+}
+
 // Copiar
 document.getElementById('copyBtn').onclick = async () => {
   const items = getOrderItems();
@@ -862,21 +942,28 @@ document.getElementById('copyBtn').onclick = async () => {
     document.execCommand('copy');
     document.body.removeChild(ta);
   }
+  saveOrderToNotion(null, 'copy');
   btn.textContent = "¡Copiado! ✓";
   btn.classList.add('copied');
   setTimeout(() => { btn.textContent = "Copiar pedido"; btn.classList.remove('copied'); }, 1400);
 };
 
-// Enviar por WhatsApp — primero pide el nombre
+// Enviar por WhatsApp — primero pide el nombre, luego confirma amablemente
 const nameModalOverlay = document.getElementById('nameModalOverlay');
 const customerNameInput = document.getElementById('customerName');
 const nameError = document.getElementById('nameError');
+const nameStep = document.getElementById('nameStep');
+const confirmStep = document.getElementById('confirmStep');
+const confirmSummary = document.getElementById('confirmSummary');
+let pendingCustomerName = '';
 
 document.getElementById('waBtn').onclick = () => {
   const items = getOrderItems();
   if(items.length === 0) return;
   customerNameInput.value = '';
   nameError.style.display = 'none';
+  nameStep.style.display = 'block';
+  confirmStep.style.display = 'none';
   nameModalOverlay.classList.add('open');
   setTimeout(() => customerNameInput.focus(), 100);
 };
@@ -888,20 +975,39 @@ nameModalOverlay.addEventListener('click', (e) => {
   if(e.target === nameModalOverlay) nameModalOverlay.classList.remove('open');
 });
 
-document.getElementById('nameConfirm').onclick = () => {
+document.getElementById('nameNext').onclick = () => {
   const name = customerNameInput.value.trim();
   if(!name){
     nameError.style.display = 'block';
     customerNameInput.focus();
     return;
   }
-  const text = buildOrderText(name);
+  pendingCustomerName = name;
+
+  const items = getOrderItems();
+  const total = items.reduce((s,i)=>s+i.qty*i.price,0);
+  confirmSummary.innerHTML = items.map(i => `
+    <div class="c-item"><span>${i.name} x${i.qty}</span><span>$${(i.price*i.qty).toFixed(2)}</span></div>
+  `).join('') + `<div class="c-total"><span>Total</span><span>$${total.toFixed(2)}</span></div>`;
+
+  nameStep.style.display = 'none';
+  confirmStep.style.display = 'block';
+};
+
+document.getElementById('confirmBack').onclick = () => {
+  confirmStep.style.display = 'none';
+  nameStep.style.display = 'block';
+};
+
+document.getElementById('nameConfirm').onclick = () => {
+  const text = buildOrderText(pendingCustomerName);
   const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`;
+  saveOrderToNotion(pendingCustomerName, 'whatsapp');
   nameModalOverlay.classList.remove('open');
   window.open(url, '_blank');
 };
 customerNameInput.addEventListener('keydown', (e) => {
-  if(e.key === 'Enter') document.getElementById('nameConfirm').click();
+  if(e.key === 'Enter') document.getElementById('nameNext').click();
 });
 
 // ---- Visor de zoom (estilo Mercado Libre) ----
