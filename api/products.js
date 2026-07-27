@@ -28,8 +28,7 @@ export default async function handler(req, res) {
     );
     const configData = await configRes.json();
     const configRow = configData.results?.[0]?.properties;
-    const tasaBCV = configRow?.["Tasa BCV"]?.number ?? 1;
-    const tasaUSDT = configRow?.["Tasa USDT"]?.number ?? 1;
+    const brecha = configRow?.["Brecha BCV/USDT %"]?.number ?? 0;
     const margenGeneral = configRow?.["Margen General %"]?.number ?? 0;
 
     // 2. Trae los productos
@@ -71,7 +70,7 @@ export default async function handler(req, res) {
 
         // Precio calculado en vivo: costo ajustado por la brecha BCV/USDT + margen
         const margenAplicado = margenIndividual != null ? margenIndividual : margenGeneral;
-        const costoAjustado = costoUSD * (tasaUSDT / tasaBCV);
+        const costoAjustado = costoUSD * (1 + brecha / 100);
         const precioCalculado = Math.round(costoAjustado * (1 + margenAplicado / 100) * 100) / 100;
 
         const precioFinal = precioManual || !costoUSD ? precioFijo : precioCalculado;
